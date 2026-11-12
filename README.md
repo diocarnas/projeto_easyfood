@@ -151,13 +151,3 @@ Os uploads são armazenados localmente em `public/uploads/`. Em
 plataformas com filesystem efêmero, configure armazenamento persistente
 ou um serviço externo, como Amazon S3 ou Cloudinary.
 
-## 👨‍💻 Desenvolvedor
-
-**Diogo Carvalho**\
-Estudante de Engenharia da Computação, com interesse em desenvolvimento
-de software, arquitetura de sistemas, banco de dados e tecnologias
-backend.
-
-## 📄 Licença
-
-Projeto desenvolvido para fins acadêmicos e de aprendizado.
