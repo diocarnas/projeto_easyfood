@@ -1,44 +1,163 @@
-# EasyFood
+# 🍽️ EasyFood
 
-API da EasyFood desenvolvida com Node.js, Express, Prisma e **MySQL**.
+API REST para gerenciamento de restaurantes e pratos, desenvolvida com
+**Node.js, Express, Prisma ORM e MySQL**.
 
-## Requisitos
-- Node.js 20 ou superior
-- MySQL 8 ou compatível
+## 🚀 Tecnologias utilizadas
 
-## Configuração
-1. Instale as dependências: `npm install`
-2. Copie `.env.example` para `.env` e configure `DATABASE_URL` e `JWT_SECRET`.
-3. Aplique a migration incremental: `npx prisma migrate deploy`
-4. Gere o Prisma Client: `npx prisma generate`
-5. Inicie a API: `npm start` (ou `npm run dev` durante o desenvolvimento).
+-   Node.js
+-   Express
+-   MySQL
+-   Prisma ORM
+-   JWT
+-   Bcrypt
+-   Multer
+-   Sharp
 
-> A migration nova apenas adiciona `User.avatarUrl` e a tabela `Dish`. Ela não recria nem apaga as tabelas atuais. Faça backup do banco antes de aplicar qualquer migration em ambiente com dados importantes.
+## ⚙️ Funcionalidades
 
-## Rotas principais
+### Autenticação e usuários
 
-### Autenticação
-- `POST /auth/register` — cadastro `{ "name", "email", "password" }`
-- `POST /auth/login` — login `{ "email", "password" }`
-- `GET /auth/me` — consulta sessão (Bearer token)
-- `POST /auth/me/avatar` — envia foto de perfil (multipart/form-data, campo `image`, Bearer token)
+-   Cadastro e login de usuários.
+-   Autenticação com JWT.
+-   Consulta do usuário autenticado.
+-   Upload de foto de perfil.
 
 ### Restaurantes
-- `GET /restaurants` — lista restaurantes
-- `GET /restaurants/stats` — estatísticas
-- `POST /restaurants` — cria restaurante (autenticado)
-- `PUT /restaurants/:id` — atualiza restaurante (autenticado)
-- `DELETE /restaurants/:id` — exclui restaurante (autenticado)
+
+-   Cadastro, listagem, atualização e exclusão.
+-   Consulta de estatísticas.
 
 ### Pratos
-- `POST /restaurants/:restaurantId/dishes` — cadastra prato (autenticado; dono do restaurante)
-- `GET /restaurants/:restaurantId/dishes` — lista pratos do restaurante
-- `GET /dishes/:dishId` — consulta prato
-- `PUT /dishes/:dishId` — atualiza prato (autenticado; dono do restaurante)
-- `POST /dishes/:dishId/image` — envia imagem do prato (multipart/form-data, campo `image`, autenticado; dono do restaurante)
-- `DELETE /dishes/:dishId` — exclui prato (autenticado; dono do restaurante)
 
-## Upload de imagens
-Os uploads aceitam JPG, PNG, WEBP e GIF, com limite de 5 MB. As imagens são validadas e convertidas para WebP pelo Sharp. Os arquivos ficam em `public/uploads/` e são servidos estaticamente pelo Express.
+-   Cadastro de pratos vinculados a restaurantes.
+-   Listagem por restaurante e consulta individual.
+-   Atualização e exclusão.
+-   Upload de imagens.
+-   Controle de acesso baseado na propriedade do restaurante.
 
-**Importante para deploy:** armazenamento local pode ser apagado em plataformas com filesystem efêmero. Em produção, configure armazenamento persistente ou um serviço de objetos (por exemplo, S3/Cloudinary) antes de depender dessas imagens.
+### Upload e processamento de imagens
+
+-   Multer para gerenciamento dos uploads.
+-   Formatos aceitos: JPG, PNG, WEBP e GIF.
+-   Limite de 5 MB por arquivo.
+-   Conversão para WebP utilizando Sharp.
+
+## 🛠️ Instalação e configuração
+
+### Pré-requisitos
+
+-   Node.js 20 ou superior.
+-   MySQL 8 ou compatível.
+-   npm.
+
+### 1. Clone o repositório
+
+``` bash
+git clone https://github.com/diocarnas/projeto_easyfood.git
+cd projeto_easyfood
+```
+
+### 2. Instale as dependências
+
+``` bash
+npm install
+```
+
+### 3. Configure as variáveis de ambiente
+
+Crie um arquivo `.env` com base no `.env.example`:
+
+``` env
+DATABASE_URL="mysql://usuario:senha@localhost:3306/easyfood"
+JWT_SECRET="sua_chave_secreta"
+```
+
+Configure os dados conforme seu ambiente MySQL.
+
+### 4. Execute as migrations e gere o Prisma Client
+
+``` bash
+npx prisma migrate deploy
+npx prisma generate
+```
+
+### 5. Inicie a aplicação
+
+``` bash
+npm start
+```
+
+Para desenvolvimento, se o script estiver disponível:
+
+``` bash
+npm run dev
+```
+
+A API estará disponível em `http://localhost:3000`.
+
+## 📌 Principais rotas
+
+  Método   Endpoint                              Descrição
+  -------- ------------------------------------- ----------------------
+  POST     `/auth/register`                      Cadastro de usuário
+  POST     `/auth/login`                         Login
+  GET      `/auth/me`                            Consulta sessão
+  POST     `/auth/me/avatar`                     Upload de avatar
+  GET      `/restaurants`                        Lista restaurantes
+  GET      `/restaurants/stats`                  Estatísticas
+  POST     `/restaurants`                        Cria restaurante
+  PUT      `/restaurants/:id`                    Atualiza restaurante
+  DELETE   `/restaurants/:id`                    Exclui restaurante
+  POST     `/restaurants/:restaurantId/dishes`   Cadastra prato
+  GET      `/restaurants/:restaurantId/dishes`   Lista pratos
+  GET      `/dishes/:dishId`                     Consulta prato
+  PUT      `/dishes/:dishId`                     Atualiza prato
+  POST     `/dishes/:dishId/image`               Upload de imagem
+  DELETE   `/dishes/:dishId`                     Exclui prato
+
+Rotas protegidas exigem o cabeçalho:
+
+``` http
+Authorization: Bearer SEU_TOKEN
+```
+
+Os uploads utilizam `multipart/form-data`, com o campo `image`.
+
+## 🗄️ Banco de dados
+
+A aplicação utiliza MySQL como banco de dados relacional e Prisma ORM
+para acesso aos dados.
+
+As migrations controlam a evolução do banco. A migration incremental
+adiciona o campo `avatarUrl` em `User` e a tabela `Dish`.
+
+> Faça backup do banco antes de aplicar migrations em ambientes com
+> dados importantes. Não utilize `prisma migrate reset` em bancos que
+> precisam preservar seus dados.
+
+## 🔒 Segurança
+
+-   Senhas armazenadas com hash usando Bcrypt.
+-   Autenticação baseada em JWT.
+-   Rotas protegidas por middleware.
+-   Verificação de propriedade dos restaurantes.
+-   Validação dos arquivos enviados.
+-   Credenciais mantidas no `.env`, que não deve ser versionado.
+
+## ☁️ Deploy
+
+Os uploads são armazenados localmente em `public/uploads/`. Em
+plataformas com filesystem efêmero, configure armazenamento persistente
+ou um serviço externo, como Amazon S3 ou Cloudinary.
+
+## 👨‍💻 Desenvolvedor
+
+**Diogo Carvalho**\
+Estudante de Engenharia da Computação, com interesse em desenvolvimento
+de software, arquitetura de sistemas, banco de dados e tecnologias
+backend.
+
+## 📄 Licença
+
+Projeto desenvolvido para fins acadêmicos e de aprendizado.
