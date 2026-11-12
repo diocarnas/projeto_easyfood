@@ -41,7 +41,8 @@ async function login({ email, password }) {
     user: {
       id: user.id,
       name: user.name,
-      email: user.email
+      email: user.email,
+      avatarUrl: user.avatarUrl || null
     }
   };
 }

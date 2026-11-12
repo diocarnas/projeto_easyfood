@@ -3,3 +3,9 @@ node_modules
 .env
 
 /generated/prisma
+
+# Imagens enviadas localmente (mantenha apenas os arquivos .gitkeep)
+public/uploads/dishes/*
+!public/uploads/dishes/.gitkeep
+public/uploads/avatars/*
+!public/uploads/avatars/.gitkeep

@@ -111,6 +111,16 @@
   .item-actions button:hover { border-color: var(--coral); color: var(--coral-deep); }
   .item-right { display: flex; flex-direction: column; align-items: flex-end; }
   .empty { padding: 40px 0; text-align: center; color: var(--ink-soft); font-size: 14px; }
+  .dish-panel { display:none; background:var(--card); border:1px solid var(--line); border-radius:4px; padding:22px; margin:24px 0; }
+  .dish-panel h2 { font-family:'Fraunces',serif; margin:0 0 14px; }
+  .dish-item { display:flex; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); }
+  .dish-item img { width:64px; height:64px; object-fit:cover; border-radius:4px; background:var(--cream); }
+  .dish-info { flex:1; min-width:0; }
+  .dish-price { color:var(--green); font-weight:600; }
+  .profile-upload { display:flex; align-items:center; gap:8px; }
+  .profile-upload input { max-width:150px; font-size:11px; padding:4px; }
+  .profile-upload button { white-space:nowrap; }
+  @media(max-width:560px) { .dish-item { align-items:flex-start; } .profile-upload input { max-width:110px; } }
   .empty strong { display: block; font-family: 'Fraunces', serif; font-size: 19px; color: var(--ink); font-weight: 600; margin-bottom: 6px; }
 </style>
 </head>
@@ -149,6 +159,7 @@
     <div class="wordmark">Easy<span>Food</span></div>
     <div class="user-bar">
       <span>Olá, <strong id="userName"></strong></span>
+      <div class="profile-upload"><input type="file" id="avatarFile" accept="image/*" aria-label="Foto de perfil" /><button class="logout-btn" id="avatarUploadBtn">Foto</button></div>
       <button class="logout-btn" id="logoutBtn">Sair</button>
     </div>
   </header>
@@ -186,6 +197,18 @@
   </div>
 
   <ul class="list" id="list"></ul>
+
+  <section class="dish-panel" id="dishPanel">
+    <h2>Pratos de <span id="dishRestaurantName"></span></h2>
+    <form id="dishForm" class="restaurant-form">
+      <div class="grid2"><input id="dishName" placeholder="Nome do prato" required /><input id="dishCategory" placeholder="Categoria" required /></div>
+      <div class="grid2"><input id="dishPrice" type="number" min="0" step="0.01" placeholder="Preço (R$)" required /><input id="dishImage" type="file" accept="image/jpeg,image/png,image/webp,image/gif" /></div>
+      <input id="dishDescription" placeholder="Descrição" />
+      <div class="form-actions"><button class="primary" id="dishSubmit" type="submit">Adicionar prato</button><button class="cancel" id="dishCancel" type="button" style="display:none">Cancelar</button></div>
+      <div class="error" id="dishError"></div>
+    </form>
+    <ul class="list" id="dishList"></ul>
+  </section>
 </div>
 
 <script>
@@ -195,6 +218,8 @@
   let allRestaurants = [];
   let editingId = null;
   let authMode = 'login';
+  let selectedRestaurantId = null;
+  let selectedDishId = null;
 
   const authScreen = document.getElementById('authScreen');
   const appScreen = document.getElementById('appScreen');
@@ -328,6 +353,7 @@
           ${r.category ? `<div class="category">${escapeHtml(r.category)}</div>` : ''}
           ${(r.address || r.phone) ? `<div class="meta">${escapeHtml(r.address || '')}${r.address && r.phone ? ' · ' : ''}${escapeHtml(r.phone || '')}</div>` : ''}
           <div class="item-actions">
+            <button onclick="openDishes(${r.id})">Pratos</button>
             <button onclick="startEdit(${r.id})">Editar</button>
             <button onclick="deleteRestaurant(${r.id})">Excluir</button>
           </div>
@@ -433,6 +459,108 @@
       alert(err.message);
     }
   };
+
+
+  // ---------- PRATOS E IMAGENS ----------
+  const dishPanel = document.getElementById('dishPanel');
+  const dishForm = document.getElementById('dishForm');
+  const dishError = document.getElementById('dishError');
+
+  window.openDishes = async function (restaurantId) {
+    const restaurant = allRestaurants.find(item => item.id === restaurantId);
+    if (!restaurant) return;
+    selectedRestaurantId = restaurantId;
+    selectedDishId = null;
+    document.getElementById('dishRestaurantName').textContent = restaurant.name;
+    dishPanel.style.display = 'block';
+    resetDishForm();
+    dishPanel.scrollIntoView({ behavior: 'smooth' });
+    await loadDishes();
+  };
+
+  async function loadDishes() {
+    if (!selectedRestaurantId) return;
+    const list = document.getElementById('dishList');
+    try {
+      const response = await fetch(`${API}/restaurants/${selectedRestaurantId}/dishes`);
+      const dishes = await response.json();
+      if (!response.ok) throw new Error(dishes.error || 'Erro ao carregar pratos');
+      if (!dishes.length) { list.innerHTML = '<li class="empty">Nenhum prato cadastrado neste restaurante.</li>'; return; }
+      list.innerHTML = dishes.map(d => `
+        <li class="dish-item">
+          ${d.imageUrl ? `<img src="${escapeHtml(d.imageUrl)}" alt="${escapeHtml(d.name)}">` : '<div style="width:64px;height:64px;background:var(--cream)"></div>'}
+          <div class="dish-info"><strong>${escapeHtml(d.name)}</strong><div class="category">${escapeHtml(d.category)}</div><div class="meta">${escapeHtml(d.description || '')}</div><div class="dish-price">R$ ${Number(d.price).toFixed(2)}</div>
+          <div class="item-actions"><button onclick="editDish(${d.id})">Editar</button><button onclick="deleteDish(${d.id})">Excluir</button></div></div>
+        </li>`).join('');
+    } catch (error) { list.innerHTML = `<li class="empty">${escapeHtml(error.message)}</li>`; }
+  }
+
+  function resetDishForm() {
+    dishForm.reset(); selectedDishId = null;
+    document.getElementById('dishSubmit').textContent = 'Adicionar prato';
+    document.getElementById('dishCancel').style.display = 'none';
+    dishError.style.display = 'none';
+  }
+
+  dishForm.addEventListener('submit', async (event) => {
+    event.preventDefault(); dishError.style.display = 'none';
+    const payload = {
+      name: document.getElementById('dishName').value.trim(),
+      category: document.getElementById('dishCategory').value.trim(),
+      price: document.getElementById('dishPrice').value,
+      description: document.getElementById('dishDescription').value.trim()
+    };
+    const button = document.getElementById('dishSubmit'); button.disabled = true;
+    try {
+      const url = selectedDishId ? `${API}/dishes/${selectedDishId}` : `${API}/restaurants/${selectedRestaurantId}/dishes`;
+      const response = await fetch(url, { method: selectedDishId ? 'PUT' : 'POST', headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` }, body:JSON.stringify(payload) });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Não foi possível salvar o prato');
+      const file = document.getElementById('dishImage').files[0];
+      if (file) {
+        const data = new FormData(); data.append('image', file);
+        const imageResponse = await fetch(`${API}/dishes/${result.id}/image`, { method:'POST', headers:{ 'Authorization':`Bearer ${token}` }, body:data });
+        const imageResult = await imageResponse.json();
+        if (!imageResponse.ok) throw new Error(imageResult.error || 'Prato salvo, mas houve erro no upload da imagem');
+      }
+      resetDishForm(); await loadDishes();
+    } catch (error) { dishError.textContent = error.message; dishError.style.display = 'block'; }
+    finally { button.disabled = false; }
+  });
+
+  window.editDish = async function (id) {
+    const response = await fetch(`${API}/dishes/${id}`); const dish = await response.json();
+    if (!response.ok) return alert(dish.error || 'Erro ao consultar prato');
+    selectedDishId = id;
+    document.getElementById('dishName').value = dish.name;
+    document.getElementById('dishCategory').value = dish.category;
+    document.getElementById('dishPrice').value = Number(dish.price).toFixed(2);
+    document.getElementById('dishDescription').value = dish.description || '';
+    document.getElementById('dishSubmit').textContent = 'Salvar alterações';
+    document.getElementById('dishCancel').style.display = 'inline-block';
+    dishForm.scrollIntoView({ behavior:'smooth' });
+  };
+
+  window.deleteDish = async function (id) {
+    if (!confirm('Excluir este prato?')) return;
+    const response = await fetch(`${API}/dishes/${id}`, { method:'DELETE', headers:{ 'Authorization':`Bearer ${token}` } });
+    if (!response.ok && response.status !== 204) { const result = await response.json(); return alert(result.error || 'Erro ao excluir'); }
+    await loadDishes();
+  };
+  document.getElementById('dishCancel').addEventListener('click', resetDishForm);
+
+  document.getElementById('avatarUploadBtn').addEventListener('click', async () => {
+    const file = document.getElementById('avatarFile').files[0];
+    if (!file) return alert('Selecione uma imagem primeiro.');
+    const form = new FormData(); form.append('image', file);
+    const response = await fetch(`${API}/auth/me/avatar`, { method:'POST', headers:{ 'Authorization':`Bearer ${token}` }, body:form });
+    const result = await response.json();
+    if (!response.ok) return alert(result.error || 'Erro ao enviar foto');
+    currentUser = { ...currentUser, ...result.user };
+    localStorage.setItem('easyfood_user', JSON.stringify(currentUser));
+    document.getElementById('avatarFile').value = '';
+    alert('Foto de perfil atualizada!');
+  });
 
   // ---------- INIT ----------
   if (token && currentUser) {

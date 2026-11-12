@@ -1,141 +1,44 @@
-# 🍕 EasyFood
+# EasyFood
 
-API e aplicação web para cadastro, organização e avaliação de restaurantes, com autenticação de usuários via JWT.
+API da EasyFood desenvolvida com Node.js, Express, Prisma e **MySQL**.
 
-Projeto desenvolvido como atividade da disciplina de Arquitetura de Software, evoluindo progressivamente de um array em memória até uma aplicação em camadas com persistência em banco de dados e autenticação.
+## Requisitos
+- Node.js 20 ou superior
+- MySQL 8 ou compatível
 
-## ✨ Funcionalidades
+## Configuração
+1. Instale as dependências: `npm install`
+2. Copie `.env.example` para `.env` e configure `DATABASE_URL` e `JWT_SECRET`.
+3. Aplique a migration incremental: `npx prisma migrate deploy`
+4. Gere o Prisma Client: `npx prisma generate`
+5. Inicie a API: `npm start` (ou `npm run dev` durante o desenvolvimento).
 
-- 🔐 Registro e login de usuários com autenticação JWT
-- 🍽️ Cadastro de restaurantes (nome, categoria, endereço, telefone e avaliação)
-- 📋 Catálogo pessoal de restaurantes por usuário
-- ✏️ Edição e exclusão de restaurantes
-- 🔎 Filtro por categoria
-- 📊 Estatísticas (total de restaurantes, categorias e avaliação média)
-- 💻 Front-end integrado (HTML/CSS/JS puro)
+> A migration nova apenas adiciona `User.avatarUrl` e a tabela `Dish`. Ela não recria nem apaga as tabelas atuais. Faça backup do banco antes de aplicar qualquer migration em ambiente com dados importantes.
 
-## 🛠️ Tecnologias
-
-- [Node.js](https://nodejs.org/) + [Express](https://expressjs.com/)
-- [Prisma ORM](https://www.prisma.io/)
-- [MySQL](https://www.mysql.com/)
-- [JWT](https://jwt.io/) (`jsonwebtoken`) para autenticação
-- [bcryptjs](https://www.npmjs.com/package/bcryptjs) para hash de senhas
-- HTML, CSS e JavaScript puro no front-end
-
-## 📁 Estrutura do projeto
-
-```
-projeto-easyfood/
-├── prisma/
-│   ├── migrations/
-│   └── schema.prisma
-├── public/
-│   └── index.html
-├── src/
-│   ├── database/
-│   │   └── prisma.js
-│   ├── modules/
-│   │   ├── auth/
-│   │   │   ├── auth.service.js
-│   │   │   ├── auth.controller.js
-│   │   │   ├── auth.middleware.js
-│   │   │   └── auth.routes.js
-│   │   └── restaurants/
-│   │       ├── restaurant.service.js
-│   │       ├── restaurant.controller.js
-│   │       └── restaurant.routes.js
-│   └── app.js
-├── server.js
-├── package.json
-└── .env
-```
-
-A aplicação segue uma arquitetura em camadas:
-
-```
-Requisição HTTP → Routes → Controller → Service → Database (Prisma) → MySQL
-```
-
-## 🚀 Como rodar localmente
-
-### Pré-requisitos
-
-- [Node.js](https://nodejs.org/) (versão LTS)
-- [MySQL](https://dev.mysql.com/downloads/installer/) instalado e rodando
-
-### 1. Clone o repositório
-
-```bash
-git clone https://github.com/SEU_USUARIO/projeto-easyfood.git
-cd projeto-easyfood
-```
-
-### 2. Instale as dependências
-
-```bash
-npm install
-```
-
-### 3. Configure as variáveis de ambiente
-
-Crie um arquivo `.env` na raiz do projeto com base no `.env.example`:
-
-```env
-DATABASE_URL="mysql://usuario:senha@localhost:3306/easyfood"
-JWT_SECRET="troque-por-uma-chave-longa-e-aleatoria"
-```
-
-### 4. Crie o banco de dados
-
-No MySQL, crie o banco:
-
-```sql
-CREATE DATABASE easyfood;
-```
-
-### 5. Rode as migrations
-
-```bash
-npx prisma migrate dev
-```
-
-Isso cria as tabelas `User` e `Restaurant` no banco.
-
-### 6. Inicie o servidor
-
-```bash
-node server.js
-```
-
-Acesse `http://localhost:3000` no navegador.
-
-## 📡 Endpoints da API
+## Rotas principais
 
 ### Autenticação
-
-| Método | Rota             | Descrição                         | Protegida |
-|--------|------------------|------------------------------------|-----------|
-| POST   | `/auth/register` | Cria um novo usuário               | Não       |
-| POST   | `/auth/login`    | Autentica e retorna um token JWT   | Não       |
-| GET    | `/auth/me`        | Retorna os dados do usuário logado | Sim       |
+- `POST /auth/register` — cadastro `{ "name", "email", "password" }`
+- `POST /auth/login` — login `{ "email", "password" }`
+- `GET /auth/me` — consulta sessão (Bearer token)
+- `POST /auth/me/avatar` — envia foto de perfil (multipart/form-data, campo `image`, Bearer token)
 
 ### Restaurantes
+- `GET /restaurants` — lista restaurantes
+- `GET /restaurants/stats` — estatísticas
+- `POST /restaurants` — cria restaurante (autenticado)
+- `PUT /restaurants/:id` — atualiza restaurante (autenticado)
+- `DELETE /restaurants/:id` — exclui restaurante (autenticado)
 
-| Método | Rota                          | Descrição                              | Protegida |
-|--------|-------------------------------|------------------------------------------|-----------|
-| GET    | `/restaurants`                | Lista restaurantes (filtro `?category=`) | Não       |
-| GET    | `/restaurants/stats`          | Estatísticas gerais                      | Não       |
-| POST   | `/restaurants`                | Cadastra um novo restaurante             | Sim       |
-| PUT    | `/restaurants/:id`            | Atualiza um restaurante                  | Sim       |
-| DELETE | `/restaurants/:id`            | Remove um restaurante                    | Sim       |
+### Pratos
+- `POST /restaurants/:restaurantId/dishes` — cadastra prato (autenticado; dono do restaurante)
+- `GET /restaurants/:restaurantId/dishes` — lista pratos do restaurante
+- `GET /dishes/:dishId` — consulta prato
+- `PUT /dishes/:dishId` — atualiza prato (autenticado; dono do restaurante)
+- `POST /dishes/:dishId/image` — envia imagem do prato (multipart/form-data, campo `image`, autenticado; dono do restaurante)
+- `DELETE /dishes/:dishId` — exclui prato (autenticado; dono do restaurante)
 
-Rotas protegidas exigem o header:
+## Upload de imagens
+Os uploads aceitam JPG, PNG, WEBP e GIF, com limite de 5 MB. As imagens são validadas e convertidas para WebP pelo Sharp. Os arquivos ficam em `public/uploads/` e são servidos estaticamente pelo Express.
 
-```
-Authorization: Bearer SEU_TOKEN
-```
-
-## 📝 Licença
-
-Projeto acadêmico, desenvolvido para fins de estudo.
+**Importante para deploy:** armazenamento local pode ser apagado em plataformas com filesystem efêmero. Em produção, configure armazenamento persistente ou um serviço de objetos (por exemplo, S3/Cloudinary) antes de depender dessas imagens.
